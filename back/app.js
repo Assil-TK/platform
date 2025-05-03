@@ -146,13 +146,13 @@ app.get('/api/file-content', async (req, res) => {
 });
 
 app.post('/api/update-file', async (req, res) => {
-  const { repo, path, content } = req.body; // Expecting body with repo, path, and content
+  const { repo, path, content, sha, message } = req.body;
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
-    // Get the current file sha for the file to be updated
+    // Fetch the current file information from GitHub to get the SHA
     const fileResponse = await axios.get(
       `https://api.github.com/repos/${req.user.username}/${repo}/contents/${path}`,
       {
@@ -163,16 +163,17 @@ app.post('/api/update-file', async (req, res) => {
       }
     );
 
-    const sha = fileResponse.data.sha; // File's sha hash is needed for update
+    // File SHA is needed to update it
+    const fileSha = fileResponse.data.sha;
     const encodedContent = Buffer.from(content).toString('base64'); // Base64 encode the content
 
-    // Update the file via GitHub API
+    // Send the update request to GitHub
     const updateResponse = await axios.put(
-      `https://api.github.com/repos/${req.user.username}/${repo}/contents/${path}`,
+      `https://api.github.com/repos/${req.user.username}/${repo}/contents${path}`,
       {
-        message: 'Update file content',
+        message,
         content: encodedContent,
-        sha: sha,
+        sha: fileSha, // Use the correct SHA
       },
       {
         headers: {
@@ -182,12 +183,17 @@ app.post('/api/update-file', async (req, res) => {
       }
     );
 
-    res.json({ message: 'File updated successfully' });
+    // Respond with the success message
+    res.json(updateResponse.data);
   } catch (err) {
-    console.error('Error updating file:', err);
-    res.status(500).json({ error: 'Failed to update file' });
+    console.error('Error during file update:', err.response?.data || err.message || err);
+    res.status(500).json({
+      error: 'Failed to update file',
+      details: err.response?.data || err.message || err,
+    });
   }
 });
+
 
 
 app.listen(PORT, () => {
