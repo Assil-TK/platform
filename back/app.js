@@ -5,13 +5,19 @@ const GitHubStrategy = require('passport-github2').Strategy;
 const dotenv = require('dotenv');
 const axios = require('axios');
 const cors = require('cors');
+const saveContentRoute = require('./routes/fileWriter');
+
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5010;
 
-// Add this middleware:
+app.use(cors({ origin: 'http://localhost:3000' }));
+// Add this middleware before your routes
 app.use(express.json());
+
+// Then add your routes
+app.use('/api', saveContentRoute);
 
 // CORS for frontend access
 app.use(cors({
@@ -68,8 +74,6 @@ app.get('/logout', (req, res) => {
   });
 });
 
-
-
 // Get current user
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated()) {
@@ -99,6 +103,7 @@ app.get('/api/repos', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch repos' });
   }
 });
+
 // Fetch files/folders in a specific repo path
 app.get('/api/files', async (req, res) => {
   const { repo, path = '' } = req.query;
@@ -136,15 +141,35 @@ app.get('/api/file-content', async (req, res) => {
       }
     });
 
-    // Decoding content from base64
-    const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
-    res.json({ content });
+    const isBinary = response.data.encoding === 'base64' && !response.data.content.includes('\n');
+    const fileType = response.data.type;
+    const contentType = response.data._links && response.data._links.self && path.match(/\.(\w+)$/)?.[1];
+
+    if (isBinary && /\.(png|jpe?g|gif|webp|svg)$/i.test(path)) {
+      // It's an image or binary file: return raw base64
+      return res.json({
+        content: response.data.content,  // still base64
+        contentType: `image/${contentType === 'jpg' ? 'jpeg' : contentType}`,
+        sha: response.data.sha,
+        isBinary: true
+      });
+    } else {
+      // It's a text file: decode it
+      const decodedContent = Buffer.from(response.data.content, 'base64').toString('utf-8');
+      return res.json({
+        content: decodedContent,
+        sha: response.data.sha,
+        isBinary: false
+      });
+    }
+
   } catch (err) {
     console.error('Error fetching file content:', err.response?.data || err);
     res.status(500).json({ error: 'Failed to fetch file content' });
   }
 });
 
+// Update file on GitHub
 app.post('/api/update-file', async (req, res) => {
   const { repo, path, content, sha, message } = req.body;
   if (!req.isAuthenticated()) {
@@ -152,7 +177,6 @@ app.post('/api/update-file', async (req, res) => {
   }
 
   try {
-    // Fetch the current file information from GitHub to get the SHA
     const fileResponse = await axios.get(
       `https://api.github.com/repos/${req.user.username}/${repo}/contents/${path}`,
       {
@@ -163,11 +187,9 @@ app.post('/api/update-file', async (req, res) => {
       }
     );
 
-    // File SHA is needed to update it
     const fileSha = fileResponse.data.sha;
     const encodedContent = Buffer.from(content).toString('base64'); // Base64 encode the content
 
-    // Send the update request to GitHub
     const updateResponse = await axios.put(
       `https://api.github.com/repos/${req.user.username}/${repo}/contents${path}`,
       {
@@ -183,7 +205,6 @@ app.post('/api/update-file', async (req, res) => {
       }
     );
 
-    // Respond with the success message
     res.json(updateResponse.data);
   } catch (err) {
     console.error('Error during file update:', err.response?.data || err.message || err);
@@ -194,8 +215,6 @@ app.post('/api/update-file', async (req, res) => {
   }
 });
 
-
-
 app.listen(PORT, () => {
-  console.log(` Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

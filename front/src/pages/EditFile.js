@@ -12,7 +12,7 @@ const EditFile = () => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(true);
   const [sha, setSha] = useState('');
-  const [loadingAI, setLoadingAI] = useState(false);  // Loading state for AI request
+  const [loadingAI, setLoadingAI] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +22,7 @@ const EditFile = () => {
         const { content, sha } = await fetchFileContent(selectedRepo, selectedFile);
         setContent(content);
         setSha(sha);
+        updateFileContentInPlatform(content);  // Update filecontent.js
       } catch (err) {
         console.error('Error loading file:', err);
         setContent('// Error loading file content');
@@ -31,6 +32,15 @@ const EditFile = () => {
     };
     loadFile();
   }, [selectedRepo, selectedFile]);
+
+  const updateFileContentInPlatform = async (content) => {
+    try {
+      await axios.post('http://localhost:5010/api/write-file-content', { content });
+      console.log('filecontent.js updated successfully from frontend');
+    } catch (error) {
+      console.error('Failed to update filecontent.js:', error);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -44,21 +54,21 @@ const EditFile = () => {
   };
 
   const handleAIUpdate = async () => {
-    setLoadingAI(true);  // Start loading AI response
+    setLoadingAI(true);
     try {
-      const message = `voici le code du fichier:${content} et je veux faire:${prompt}`;
-      
+      const message = `Here is the code for the file: ${content} and I want to do the following: ${prompt}`;
       const response = await axios.post('https://coder-api.onrender.com/generate', {
         prompt: message
       });
 
       const updatedCode = response.data.code;
-      setContent(updatedCode);  // Replace content with AI's response
+      setContent(updatedCode);
+      updateFileContentInPlatform(updatedCode);
     } catch (error) {
       console.error('Error communicating with AI API:', error);
       alert('Failed to get AI response');
     } finally {
-      setLoadingAI(false);  // Stop loading AI response
+      setLoadingAI(false);
     }
   };
 
@@ -84,7 +94,10 @@ const EditFile = () => {
       <br />
       <textarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          setContent(e.target.value);
+          updateFileContentInPlatform(e.target.value);
+        }}
         rows={25}
         cols={100}
         style={{ whiteSpace: 'pre', fontFamily: 'monospace' }}
@@ -110,11 +123,21 @@ const EditFile = () => {
       {loadingAI && (
         <div>
           <p>Loading AI response...</p>
-          <div className="spinner"></div>  {/* Simple spinner */}
+          <div className="spinner"></div>
         </div>
       )}
 
-      <br />
+      {/* 🧠 Preview Box */}
+      <div style={{ border: '1px solid #ccc', margin: '20px 0', height: '400px' }}>
+        <iframe
+          src="http://localhost:3000/filecontent"
+          title="Live Preview"
+          width="100%"
+          height="100%"
+          style={{ border: 'none' }}
+        />
+      </div>
+
       <button onClick={handleSave}>Save</button>
     </div>
   );
