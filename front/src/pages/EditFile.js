@@ -44,7 +44,8 @@ const EditFile = () => {
 
   const handleSave = async () => {
     try {
-      await updateFileContent(selectedRepo, selectedFile, content, sha, commitMessage || 'Update file');
+      const sanitizedFile = selectedFile.replace(/^\/+/, '');  // Remove leading slashes
+      await updateFileContent(selectedRepo, sanitizedFile, content, sha, commitMessage || 'Update file');
       alert('File saved successfully!');
       navigate('/repo-explorer');
     } catch (err) {
@@ -52,6 +53,7 @@ const EditFile = () => {
       alert('Failed to save');
     }
   };
+  
 
   const handleAIUpdate = async () => {
     setLoadingAI(true);

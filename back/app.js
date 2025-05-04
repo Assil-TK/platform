@@ -12,18 +12,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5010;
 
-app.use(cors({ origin: 'http://localhost:3000' }));
-// Add this middleware before your routes
-app.use(express.json());
+app.use(cors({
+  origin: 'http://localhost:3000', // ou process.env.FRONTEND_URL si tu le préfères
+  credentials: true
+}));
 
-// Then add your routes
+app.use(express.json());
 app.use('/api', saveContentRoute);
 
-// CORS for frontend access
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-}));
 
 // Session middleware
 app.use(session({
@@ -191,7 +187,7 @@ app.post('/api/update-file', async (req, res) => {
     const encodedContent = Buffer.from(content).toString('base64'); // Base64 encode the content
 
     const updateResponse = await axios.put(
-      `https://api.github.com/repos/${req.user.username}/${repo}/contents${path}`,
+      `https://api.github.com/repos/${req.user.username}/${repo}/contents/${path}`,
       {
         message,
         content: encodedContent,
