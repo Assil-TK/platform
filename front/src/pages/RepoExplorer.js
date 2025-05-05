@@ -1,6 +1,9 @@
+// pages/RepoExplorer.js
 import React, { useEffect, useState } from 'react';
 import { fetchUser, fetchRepos, fetchFiles, fetchFileContent } from '../api/githubApi';
 import { useNavigate } from 'react-router-dom';
+import RepoSelector from '../components/RepoSelector';
+import FileTree from '../components/FileTree';
 
 const RepoExplorer = () => {
   const [user, setUser] = useState(null);
@@ -24,32 +27,17 @@ const RepoExplorer = () => {
 
   useEffect(() => {
     if (user) {
-      const loadRepos = async () => {
-        try {
-          const data = await fetchRepos();
-          setRepos(data);
-        } catch (err) {
-          console.error('Failed to load repos:', err);
-        }
-      };
-      loadRepos();
+      fetchRepos().then(setRepos).catch(console.error);
     }
   }, [user]);
 
   useEffect(() => {
     if (selectedRepo) {
-      const loadFiles = async () => {
-        try {
-          setLoading(true);
-          const files = await fetchFiles(selectedRepo);
-          setFileTree(files);
-        } catch (err) {
-          console.error('Failed to load files:', err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      loadFiles();
+      setLoading(true);
+      fetchFiles(selectedRepo)
+        .then(setFileTree)
+        .catch(console.error)
+        .finally(() => setLoading(false));
     }
   }, [selectedRepo]);
 
@@ -60,17 +48,16 @@ const RepoExplorer = () => {
 
       if (encoding === 'base64') {
         setFileType('binary');
-        const fileExtension = filePath.split('.').pop().toLowerCase();
-        if (['png', 'jpg', 'jpeg', 'gif'].includes(fileExtension)) {
-          setFileContent(`data:image/${fileExtension};base64,${content}`);
+        const ext = filePath.split('.').pop().toLowerCase();
+        if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
+          setFileContent(`data:image/${ext};base64,${content}`);
         } else {
           setFileContent('Binary file content cannot be displayed.');
         }
       } else {
         setFileType('text');
         setFileContent(content);
-
-        if (filePath.endsWith('.jsx') || filePath.endsWith('.js')) {
+        if (filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
           const Component = () => <div dangerouslySetInnerHTML={{ __html: content }} />;
           setPreviewComponent(Component);
         } else {
@@ -88,13 +75,13 @@ const RepoExplorer = () => {
 
   const toggleFolder = async (folderPath) => {
     const isOpen = openFolders[folderPath];
-    setOpenFolders((prev) => ({ ...prev, [folderPath]: !isOpen }));
+    setOpenFolders(prev => ({ ...prev, [folderPath]: !isOpen }));
 
     if (!isOpen) {
       try {
         setLoading(true);
         const files = await fetchFiles(selectedRepo, folderPath);
-        setFileTree((prevTree) => updateFileTree(prevTree, folderPath, files));
+        setFileTree(prev => updateFileTree(prev, folderPath, files));
       } catch (err) {
         console.error('Failed to load folder contents:', err);
       } finally {
@@ -112,7 +99,7 @@ const RepoExplorer = () => {
         } else if (file.children) {
           return {
             ...file,
-            children: updateFileTree(file.children, folderPath, newFiles, fullPath)
+            children: updateFileTree(file.children, folderPath, newFiles, fullPath),
           };
         }
       }
@@ -120,55 +107,23 @@ const RepoExplorer = () => {
     });
   };
 
-  const renderFileTree = (files, parentPath = '') => {
-    return (
-      <ul>
-        {(Array.isArray(files) ? files : []).map(file => {
-          const filePath = `${parentPath}/${file.name}`;
-          if (file.type === 'file') {
-            return (
-              <li key={file.sha}>
-                <button onClick={() => handleFileClick(filePath)}>{file.name}</button>
-                <button onClick={() => handleEditClick(filePath, fileContent)}>Edit</button>
-              </li>
-            );
-          } else if (file.type === 'dir') {
-            return (
-              <li key={file.sha}>
-                <span
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => toggleFolder(filePath)}
-                >
-                  {openFolders[filePath] ? '[-]' : '[+]'} {file.name}
-                </span>
-                {openFolders[filePath] && file.children && renderFileTree(file.children, filePath)}
-              </li>
-            );
-          }
-          return null;
-        })}
-      </ul>
-    );
-  };
-
   return (
     <div>
       <h2>Welcome, {user?.username || user?.login}</h2>
 
-      <h3>Select a Repository</h3>
-      <select onChange={(e) => setSelectedRepo(e.target.value)} value={selectedRepo}>
-        <option value="">--Select Repo--</option>
-        {repos.map(repo => (
-          <option key={repo.id} value={repo.name}>
-            {repo.name} - {repo.private ? 'Private' : 'Public'}
-          </option>
-        ))}
-      </select>
+      <RepoSelector repos={repos} selectedRepo={selectedRepo} onSelectRepo={setSelectedRepo} />
 
       {selectedRepo && (
         <div>
           <h3>Repo Tree</h3>
-          {renderFileTree(fileTree)}
+          <FileTree
+            files={fileTree}
+            openFolders={openFolders}
+            handleFileClick={handleFileClick}
+            handleEditClick={handleEditClick}
+            toggleFolder={toggleFolder}
+            fileContent={fileContent}
+          />
         </div>
       )}
 
@@ -180,7 +135,7 @@ const RepoExplorer = () => {
           ) : (
             <div>
               {fileContent.startsWith('data:image/') ? (
-                <img src={fileContent} alt="File preview" />
+                <img src={fileContent} alt="Preview" />
               ) : (
                 <p>{fileContent}</p>
               )}

@@ -81,9 +81,9 @@ router.post('/write-file-content', (req, res) => {
 
   const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
 
-  // Process content to replace image imports and image srcs
-  const transformedContent = replaceImageUsages(content, username, repoUrl, branch, selectedFile);
-  const contentToSave = `// Auto-generated preview file\n${transformedContent}`;
+// Process content to replace image imports and image srcs
+const transformedContent = replaceImageUsages(content, username, repoUrl, branch, selectedFile);
+const contentToSave = `// Auto-generated preview file\nimport '../components/blockNavigation';\n${transformedContent}`;
 
   fs.writeFile(filePath, contentToSave, 'utf8', (err) => {
     if (err) {
