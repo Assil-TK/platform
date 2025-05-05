@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchFileContent, updateFileContent } from '../api/githubApi';
+import { fetchUser, fetchFileContent, updateFileContent } from '../api/githubApi'; // Use githubApi
 import axios from 'axios';
 
 const EditFile = () => {
   const { state } = useLocation();
   const { selectedRepo, selectedFile } = state || {};
 
+  const [user, setUser] = useState(null); // State for storing user data
   const [content, setContent] = useState('');
   const [commitMessage, setCommitMessage] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -15,6 +16,17 @@ const EditFile = () => {
   const [loadingAI, setLoadingAI] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch user data using githubApi
+  useEffect(() => {
+    fetchUser()
+      .then(res => {
+        console.log(res.user);  // Check the API response
+        setUser(res.user);
+      })
+      .catch(() => window.location.href = '/');
+  }, []);
+  
+
   useEffect(() => {
     const loadFile = async () => {
       if (!selectedRepo || !selectedFile) return;
@@ -22,7 +34,11 @@ const EditFile = () => {
         const { content, sha } = await fetchFileContent(selectedRepo, selectedFile);
         setContent(content);
         setSha(sha);
-        updateFileContentInPlatform(content);  // Update filecontent.js
+  
+        // Check if user is available before calling the function
+        if (user) {
+          updateFileContentInPlatform(content, selectedFile);  // Update filecontent.js with selectedFile
+        }
       } catch (err) {
         console.error('Error loading file:', err);
         setContent('// Error loading file content');
@@ -31,21 +47,35 @@ const EditFile = () => {
       }
     };
     loadFile();
-  }, [selectedRepo, selectedFile]);
+  }, [selectedRepo, selectedFile, user]);
 
-  const updateFileContentInPlatform = async (content) => {
+  const updateFileContentInPlatform = async (content, selectedFile,) => {
     try {
-      await axios.post('http://localhost:5010/api/write-file-content', { content });
+      const repoUrl = `https://github.com/${selectedRepo}`;  // Correct template string
+      const branch = 'main'; // or dynamic if needed
+      const username = user?.username || user?.login; // Use either `username` or `login` based on your API response
+  
+      // Ensure the user is sent in the request
+      await axios.post('http://localhost:5010/api/write-file-content', {
+        content,
+        repoUrl,
+        branch,
+        selectedFile,
+        username,
+      });
+  
       console.log('filecontent.js updated successfully from frontend');
     } catch (error) {
-      console.error('Failed to update filecontent.js:', error);
+      console.error('Failed to update filecontent.js:', error.response?.data || error.message);
     }
   };
+  
+  
 
   const handleSave = async () => {
     try {
       const sanitizedFile = selectedFile.replace(/^\/+/, '');  // Remove leading slashes
-      await updateFileContent(selectedRepo, sanitizedFile, content, sha, commitMessage || 'Update file');
+      await updateFileContent(selectedRepo, sanitizedFile, content, sha, commitMessage || 'Update file'); // Using githubApi to update file content
       alert('File saved successfully!');
       navigate('/repo-explorer');
     } catch (err) {
@@ -53,7 +83,6 @@ const EditFile = () => {
       alert('Failed to save');
     }
   };
-  
 
   const handleAIUpdate = async () => {
     setLoadingAI(true);
@@ -65,7 +94,7 @@ const EditFile = () => {
 
       const updatedCode = response.data.code;
       setContent(updatedCode);
-      updateFileContentInPlatform(updatedCode);
+      updateFileContentInPlatform(updatedCode, selectedFile); // Update the file with AI-generated content
     } catch (error) {
       console.error('Error communicating with AI API:', error);
       alert('Failed to get AI response');
@@ -81,6 +110,12 @@ const EditFile = () => {
       <h2>Edit File</h2>
       <p><strong>Repo:</strong> {selectedRepo}</p>
       <p><strong>File:</strong> {selectedFile}</p>
+
+      {user ? (
+        <p><strong>User:</strong> {user?.username || user?.login}</p> // Displaying the fetched username
+      ) : (
+        <p>Loading user...</p>
+      )}
 
       <label>
         Commit Message:{' '}
@@ -98,7 +133,7 @@ const EditFile = () => {
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
-          updateFileContentInPlatform(e.target.value);
+          updateFileContentInPlatform(e.target.value, selectedFile); // Update with new content
         }}
         rows={25}
         cols={100}
@@ -146,3 +181,4 @@ const EditFile = () => {
 };
 
 export default EditFile;
+
