@@ -67,14 +67,6 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
 router.post('/write-file-content', (req, res) => {
   const { content, username, repoUrl, branch, selectedFile } = req.body;
 
-  // Log the incoming variables to the console
-  console.log('Received data from frontend:');
-  console.log('content:', content);
-  console.log('username:', username);
-  console.log('repoUrl:', repoUrl);
-  console.log('branch:', branch);
-  console.log('selectedFile:', selectedFile);
-
   if (!content || !username || !repoUrl || !branch || !selectedFile) {
     return res.status(400).json({ message: 'Missing required fields: content, username, repoUrl, branch, or selectedFile.' });
   }

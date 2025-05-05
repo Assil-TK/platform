@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const axios = require('axios');
 const cors = require('cors');
 const saveContentRoute = require('./routes/fileWriter');
+const resetFileContentRoute = require('./routes/reset-filecontent');
 
 
 dotenv.config();
@@ -19,7 +20,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use('/api', saveContentRoute);
-
+app.use('/api/reset-filecontent', resetFileContentRoute);
 
 // Session middleware
 app.use(session({
