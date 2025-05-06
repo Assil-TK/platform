@@ -46,6 +46,10 @@ const EditFile = () => {
     loadFile();
   }, [selectedRepo, selectedFile, user]);
 
+  useEffect(() => {
+    if (user) sendAllComponentsToBackend();
+  }, [user]);
+
   const updateFileContentInPlatform = async (content, selectedFile) => {
     try {
       const repoUrl = `https://github.com/${selectedRepo}`;
@@ -63,6 +67,51 @@ const EditFile = () => {
       console.error('Failed to update filecontent.js:', error.response?.data || error.message);
     }
   };
+
+  const sendAllComponentsToBackend = async () => {
+    try {
+      const username = user?.username || user?.login;
+      const repoPath = `${username}/${selectedRepo}`;
+  
+      const fetchComponentFiles = async (path = '') => {
+        const url = `https://api.github.com/repos/${repoPath}/contents/${path}`;
+        const response = await axios.get(url);
+        let filesToSend = [];
+  
+        for (const item of response.data) {
+          if (item.type === 'dir') {
+            const dirName = item.name.toLowerCase();
+  
+            // If folder name is 'component' or 'components'
+            if (dirName === 'component' || dirName === 'components') {
+              const compFolderFiles = await axios.get(item.url);
+              for (const file of compFolderFiles.data) {
+                if (file.type === 'file' && /\.(js|jsx|ts|tsx)$/.test(file.name)) {
+                  const fileContentResponse = await axios.get(file.download_url);
+                  filesToSend.push({ filename: file.path, content: fileContentResponse.data });
+                }
+              }
+            } else {
+              // Recurse into other directories
+              const nestedFiles = await fetchComponentFiles(item.path);
+              filesToSend = filesToSend.concat(nestedFiles);
+            }
+          }
+        }
+  
+        return filesToSend;
+      };
+  
+      const files = await fetchComponentFiles();
+      console.log('Sending these component files to the backend:', files);
+  
+      await axios.post('http://localhost:5010/api/save-imported-components', { files });
+    } catch (err) {
+      console.error('Failed to send components to backend:', err.response?.data || err.message);
+    }
+  };
+  
+  
 
   const handleSave = async () => {
     try {
