@@ -1,12 +1,12 @@
 // Auto-generated preview file
 import '../components/blockNavigation';
 import React from "react";
-import Header from "../components/Header";
-import HeroSection from "../components/HeroSection";
-import ParkingOptions from "../components/ParkingOptions";
-import CitySection from "../components/CitySection";
-import ServicesSection from "../components/ServicesSection";
-import Footer from "../components/Footer";
+import Header from "../importedcomponents/Header";
+import HeroSection from "../importedcomponents/HeroSection";
+import ParkingOptions from "../importedcomponents/ParkingOptions";
+import CitySection from "../importedcomponents/CitySection";
+import ServicesSection from "../importedcomponents/ServicesSection";
+import Footer from "../importedcomponents/Footer";
 
 
 function Home() {
