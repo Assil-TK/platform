@@ -7,7 +7,7 @@ const Home = () => {
     <Container maxWidth="sm">
       <Box sx={{ mt: 10, textAlign: 'center' }}>
         <Typography variant="h4" gutterBottom>
-          Welcome to GitHub Explorer
+          Welcome to Admins Platform
         </Typography>
         <LoginButton />
       </Box>
