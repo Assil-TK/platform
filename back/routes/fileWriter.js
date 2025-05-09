@@ -6,60 +6,37 @@ const router = express.Router();
 // Core function to transform content
 const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) => {
   const repoPath = repoUrl.replace('https://github.com', '');
-  let fileDir = path.dirname(selectedFile).replace(/^\/+/, ''); // Get the directory of the selected file
+  const selectedDir = path.dirname(selectedFile).replace(/^\/+/, ''); // Remove leading slashes
+
+  const adjustPath = (originalPath) => {
+    let cleanPath = originalPath.replace(/^(\.\/|\/)/, '');
+    if (originalPath.startsWith('/') && !originalPath.startsWith('./')) {
+      cleanPath = `../${cleanPath}`;
+    }
+    return cleanPath;
+  };
 
   // Step 1: Replace imports like `import logo from '../assets/logo.png';`
   content = content.replace(
     /import\s+(\w+)\s+from\s+['"](.+\.(png|jpg|jpeg|gif|svg))['"]/g,
     (match, varName, relPath) => {
-      // Resolve relative paths
-      let cleanedPath = relPath.replace(/^(\.\/|\/)/, ''); // Clean up leading './' or '/'
-
-      // Handle the case of `../` and multiple `../`
-      let pathParts = cleanedPath.split('/');
-      let upLevels = 0;
-
-      // Count how many `..` there are in the path and remove them
-      while (pathParts[0] === '..') {
-        upLevels++;
-        pathParts.shift(); // Remove the '..'
-      }
-
-      // Now go up the correct number of levels from `selectedFile`
-      let resolvedPath = pathParts.join('/');
-      let resolvedDir = fileDir.split('/').slice(0, -upLevels).join('/'); // Go up `upLevels` folders
-
-      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${resolvedDir}/${resolvedPath}`;
+      const cleanPath = adjustPath(relPath);
+      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
       return `const ${varName} = "${rawUrl}"`;
     }
   );
 
   // Step 2: Replace direct JSX image src attributes like: <img src="/assets/img.png" />
   content = content.replace(
-    /src\s*=\s*["'](\/[a-zA-Z0-9\-_\/\.]+)["']/g,
+    /src\s*=\s*["'](\/?[a-zA-Z0-9\-_/\.]+)["']/g,
     (match, imgPath) => {
-      // Handle path trimming
-      let trimmed = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
-
-      // Resolve `../` relative to selectedFile
-      let pathParts = trimmed.split('/');
-      let upLevels = 0;
-
-      // Count how many `..` there are in the path and remove them
-      while (pathParts[0] === '..') {
-        upLevels++;
-        pathParts.shift(); // Remove the '..'
-      }
-
-      let resolvedPath = pathParts.join('/');
-      let resolvedDir = fileDir.split('/').slice(0, -upLevels).join('/'); // Go up `upLevels` folders
-
-      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${resolvedDir}/${resolvedPath}`;
+      const cleanPath = adjustPath(imgPath);
+      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
       return `src="${rawUrl}"`;
     }
   );
 
-  // Step 3: Replace 'components' or 'component' in import paths with 'importedcomponents/Filename'
+  // Step 3: Replace 'components' or 'component' in import paths
   content = content.replace(
     /import\s+([^\s]+)\s+from\s+['"](?:\.\/|\.\.\/)*(.*?)(components|component)\/([^'"]+)['"]/g,
     (match, varName, basePath, compWord, remainingPath) => {
@@ -68,6 +45,15 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
     }
   );
 
+  // Step 4: Replace object-style image paths like: image: "/assets/img.png"
+  content = content.replace(
+    /image\s*:\s*["'](\/?[a-zA-Z0-9\-_/\.]+)["']/g,
+    (match, relPath) => {
+      const cleanPath = adjustPath(relPath);
+      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
+      return `image: "${rawUrl}"`;
+    }
+  );
 
   return content;
 };
@@ -77,14 +63,12 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
 router.post('/write-file-content', (req, res) => {
   const { content, username, repoUrl, branch, selectedFile } = req.body;
 
-
   if (!content || !username || !repoUrl || !branch || !selectedFile) {
     return res.status(400).json({ message: 'Missing required fields: content, username, repoUrl, branch, or selectedFile.' });
   }
 
   const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
 
-  // Process content to replace image imports and image srcs
   const transformedContent = replaceImageUsages(content, username, repoUrl, branch, selectedFile);
   const contentToSave = `// Auto-generated preview file\nimport '../components/blockNavigation';\n${transformedContent}`;
 
