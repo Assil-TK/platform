@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const chokidar = require('chokidar');  // Import chokidar
 const router = express.Router();
 
 // Core function to transform content
@@ -16,7 +17,7 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
     return cleanPath;
   };
 
-  // Step 1: Replace imports like `import logo from '../assets/logo.png';`
+  // Step 1: Replace imports like import logo from '../assets/logo.png';
   content = content.replace(
     /import\s+(\w+)\s+from\s+['"](.+\.(png|jpg|jpeg|gif|svg))['"]/g,
     (match, varName, relPath) => {
@@ -58,6 +59,54 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
   return content;
 };
 
+// Watch 'importedcomponents' folder for changes dynamically using chokidar
+const watchImportedComponents = (username, repoUrl, branch, selectedFile) => {
+  const importedComponentsPath = path.join(__dirname, '../../front/src/importedcomponents');
+
+  // Initialize chokidar to watch the directory
+  const watcher = chokidar.watch(importedComponentsPath, {
+    persistent: true,
+    ignored: /(^|[\/\\])\../, // Ignore dotfiles
+    ignoreInitial: true, // Ignore initial add event
+  });
+
+  // Handle file changes
+  watcher.on('change', (filePath) => {
+    processFileChange(filePath, username, repoUrl, branch, selectedFile);
+  });
+
+  // Handle file additions
+  watcher.on('add', (filePath) => {
+    processFileChange(filePath, username, repoUrl, branch, selectedFile);
+  });
+
+  // Handle other events (add, unlink, etc.)
+  watcher.on('unlink', (filePath) => {
+    console.log(`File removed: ${path.basename(filePath)}`);
+  });
+};
+
+// Function to process the file (read, transform, write)
+const processFileChange = (filePath, username, repoUrl, branch, selectedFile) => {
+  fs.readFile(filePath, 'utf8', (err, content) => {
+    if (err) {
+      console.error('Error reading file:', err);
+      return;
+    }
+
+    // Apply transformation with dynamic info
+    const updatedContent = replaceImageUsages(content, username, repoUrl, branch, selectedFile);
+
+    // Save the updated content back to the file
+    fs.writeFile(filePath, updatedContent, 'utf8', (err) => {
+      if (err) {
+        console.error('Error writing to file:', err);
+      } else {
+        console.log(`File ${path.basename(filePath)} updated successfully!`);
+      }
+    });
+  });
+};
 
 // Route: POST /api/write-file-content
 router.post('/write-file-content', (req, res) => {
@@ -79,6 +128,9 @@ router.post('/write-file-content', (req, res) => {
     }
     res.status(200).json({ message: 'File updated successfully!' });
   });
+
+  // Start watching the folder with the dynamic values from the request
+  watchImportedComponents(username, repoUrl, branch, selectedFile);
 });
 
 module.exports = router;
