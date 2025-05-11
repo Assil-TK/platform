@@ -29,9 +29,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,              // true = cookie sent only over HTTPS
+    secure: process.env.NODE_ENV === 'production',  // true for production, false for development
     httpOnly: true,
-    sameSite: 'None'           // REQUIRED for cross-site cookies
+    sameSite: 'None'  // REQUIRED for cross-site cookies
   }
 }));
 
