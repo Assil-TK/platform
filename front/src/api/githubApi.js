@@ -1,20 +1,9 @@
 // ../api/githubApi
 
-// Helper function to get the token from localStorage
-const getToken = () => localStorage.getItem('token');
-
 // Fetch current logged-in user details
 export async function fetchUser() {
-  const token = getToken();
-  if (!token) {
-    throw new Error('No token found, please login first.');
-  }
-
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -27,16 +16,8 @@ export async function fetchUser() {
 
 // Fetch user's repositories
 export async function fetchRepos() {
-  const token = getToken();
-  if (!token) {
-    throw new Error('No token found, please login first.');
-  }
-
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/repos`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -49,16 +30,8 @@ export async function fetchRepos() {
 
 // Fetch files from a specific repo and path
 export async function fetchFiles(repo, path = '') {
-  const token = getToken();
-  if (!token) {
-    throw new Error('No token found, please login first.');
-  }
-
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/files?repo=${repo}&path=${path}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -71,16 +44,8 @@ export async function fetchFiles(repo, path = '') {
 
 // Fetch content of a specific file from a repo
 export async function fetchFileContent(repo, path) {
-  const token = getToken();
-  if (!token) {
-    throw new Error('No token found, please login first.');
-  }
-
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/file-content?repo=${repo}&path=${path}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -93,18 +58,13 @@ export async function fetchFileContent(repo, path) {
 
 // Update content of a file in a repo
 export async function updateFileContent(repo, path, content, sha, message) {
-  const token = getToken();
-  if (!token) {
-    throw new Error('No token found, please login first.');
-  }
-
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/update-file`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({ repo, path, content, sha, message }),
+    credentials: 'include', // Make sure the session cookie is included
   });
 
   if (!res.ok) {

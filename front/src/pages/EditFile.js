@@ -20,14 +20,12 @@ const EditFile = () => {
   const [loadingAI, setLoadingAI] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch user once
   useEffect(() => {
     fetchUser()
       .then(res => setUser(res.user))
       .catch(() => window.location.href = '/');
   }, []);
 
-  // Load selected file
   useEffect(() => {
     const loadFile = async () => {
       if (!selectedRepo || !selectedFile) return;
@@ -35,6 +33,9 @@ const EditFile = () => {
         const { content, sha } = await fetchFileContent(selectedRepo, selectedFile);
         setContent(content);
         setSha(sha);
+        if (user) {
+          updateFileContentInPlatform(content, selectedFile);
+        }
       } catch (err) {
         console.error('Error loading file:', err);
         setContent('// Error loading file content');
@@ -43,15 +44,11 @@ const EditFile = () => {
       }
     };
     loadFile();
-  }, [selectedRepo, selectedFile]);
+  }, [selectedRepo, selectedFile, user]);
 
-  // Once content + user are available, sync to platform and send component files
   useEffect(() => {
-    if (user && content) {
-      updateFileContentInPlatform(content, selectedFile);
-      sendAllComponentsToBackend();
-    }
-  }, [user, content]);
+    if (user) sendAllComponentsToBackend();
+  }, [user]);
 
   const updateFileContentInPlatform = async (content, selectedFile) => {
     try {
@@ -75,16 +72,17 @@ const EditFile = () => {
     try {
       const username = user?.username || user?.login;
       const repoPath = `${username}/${selectedRepo}`;
-
+  
       const fetchComponentFiles = async (path = '') => {
         const url = `https://api.github.com/repos/${repoPath}/contents/${path}`;
         const response = await axios.get(url);
         let filesToSend = [];
-
+  
         for (const item of response.data) {
           if (item.type === 'dir') {
             const dirName = item.name.toLowerCase();
-
+  
+            // If folder name is 'component' or 'components'
             if (dirName === 'component' || dirName === 'components') {
               const compFolderFiles = await axios.get(item.url);
               for (const file of compFolderFiles.data) {
@@ -94,23 +92,26 @@ const EditFile = () => {
                 }
               }
             } else {
+              // Recurse into other directories
               const nestedFiles = await fetchComponentFiles(item.path);
               filesToSend = filesToSend.concat(nestedFiles);
             }
           }
         }
-
+  
         return filesToSend;
       };
-
+  
       const files = await fetchComponentFiles();
       console.log('Sending these component files to the backend:', files);
-
+  
       await axios.post(`${process.env.REACT_APP_API_URL}/api/save-imported-components`, { files });
     } catch (err) {
       console.error('Failed to send components to backend:', err.response?.data || err.message);
     }
   };
+  
+  
 
   const handleSave = async () => {
     try {
@@ -155,9 +156,8 @@ const EditFile = () => {
       <textarea
         value={content}
         onChange={(e) => {
-          const updated = e.target.value;
-          setContent(updated);
-          updateFileContentInPlatform(updated, selectedFile);
+          setContent(e.target.value);
+          updateFileContentInPlatform(e.target.value, selectedFile);
         }}
         rows={25}
         cols={100}
