@@ -1,4 +1,3 @@
-// pages/RepoExplorer.js
 import React, { useEffect, useState } from 'react';
 import { fetchUser, fetchRepos, fetchFiles, fetchFileContent } from '../api/githubApi';
 import { useNavigate } from 'react-router-dom';
@@ -20,36 +19,56 @@ const RepoExplorer = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('Attempting to fetch user info...');
     fetchUser()
-      .then(res => setUser(res.user))
-      .catch(() => window.location.href = '/');
+      .then(res => {
+        console.log('User fetched successfully:', res);
+        setUser(res.user);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch user. Redirecting to home.', error);
+        window.location.href = '/';
+      });
   }, []);
 
   useEffect(() => {
     // Reset preview filecontent.js on mount
+    console.log('Resetting file content preview on mount...');
     fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
     });
   }, []);
-  
 
   useEffect(() => {
     if (user) {
-      fetchRepos().then(setRepos).catch(console.error);
+      console.log('Fetching repos for user:', user);
+      fetchRepos()
+        .then(repos => {
+          console.log('Fetched repos:', repos);
+          setRepos(repos);
+        })
+        .catch(err => {
+          console.error('Failed to fetch repos:', err);
+        });
     }
   }, [user]);
 
   useEffect(() => {
     if (selectedRepo) {
+      console.log('Fetching files for repo:', selectedRepo);
       setLoading(true);
       fetchFiles(selectedRepo)
-        .then(setFileTree)
+        .then(files => {
+          console.log('Fetched files:', files);
+          setFileTree(files);
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     }
   }, [selectedRepo]);
 
   const handleFileClick = async (filePath) => {
+    console.log('File clicked:', filePath);
     try {
       const { content, encoding } = await fetchFileContent(selectedRepo, filePath);
       setSelectedFile(filePath);
@@ -78,6 +97,7 @@ const RepoExplorer = () => {
   };
 
   const handleEditClick = (filePath, content) => {
+    console.log('Navigating to edit file:', filePath);
     navigate('/edit-file', { state: { fileContent: content, selectedRepo, selectedFile: filePath } });
   };
 
@@ -87,6 +107,7 @@ const RepoExplorer = () => {
 
     if (!isOpen) {
       try {
+        console.log('Opening folder:', folderPath);
         setLoading(true);
         const files = await fetchFiles(selectedRepo, folderPath);
         setFileTree(prev => updateFileTree(prev, folderPath, files));

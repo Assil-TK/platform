@@ -61,7 +61,6 @@ passport.deserializeUser((user, done) => {
 
 // OAuth routes
 app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
-
 app.get('/auth/github/callback',
   passport.authenticate('github', { failureRedirect: '/' }),
   (req, res) => {
@@ -71,10 +70,18 @@ app.get('/auth/github/callback',
     if (req.isAuthenticated()) {
       console.log('User is authenticated, redirecting to frontend...');
       console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
-      res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+
+      // 🔐 Force la sauvegarde de la session avant la redirection
+      req.session.save(err => {
+        if (err) {
+          console.error('Error saving session:', err);
+          return res.redirect('/error');
+        }
+        res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+      });
     } else {
       console.error('User authentication failed');
-      res.redirect('/error');  // Redirect to a custom error page (optional)
+      res.redirect('/error');
     }
   }
 );
@@ -90,6 +97,15 @@ app.get('/api/user', (req, res) => {
     res.status(401).send("Not authenticated");
   }
 });
+
+app.get('/me', (req, res) => {
+  if (req.user) {
+    res.json({ user: req.user });
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
 
 
 // List GitHub repos
