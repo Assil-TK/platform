@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5010;
 
 app.use(cors({
-  origin: 'http://localhost:3000', // ou process.env.FRONTEND_URL si tu le préfères
+  origin: process.env.FRONTEND_URL, // ou process.env.FRONTEND_URL si tu le préfères
   credentials: true
 }));
 
@@ -28,7 +28,13 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    secure: false, // allow over HTTP for localhost
+    httpOnly: true,
+    sameSite: 'Lax', // allow cross-path cookies but restrict CSRF
+  }
 }));
+
 
 // Passport setup
 app.use(passport.initialize());
@@ -58,28 +64,32 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
 app.get('/auth/github/callback',
   passport.authenticate('github', { failureRedirect: '/' }),
   (req, res) => {
-    // Successful login
-    res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+    console.log('GitHub Authenticated User:', req.user);
+    console.log('Session after GitHub authentication:', req.session);
+
+    if (req.isAuthenticated()) {
+      console.log('User is authenticated, redirecting to frontend...');
+      console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
+      res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+    } else {
+      console.error('User authentication failed');
+      res.redirect('/error');  // Redirect to a custom error page (optional)
+    }
   }
 );
 
-// New logout route
-app.get('/logout', (req, res) => {
-  req.logout(() => {
-    req.session.destroy(() => {
-      res.redirect(`${process.env.FRONTEND_URL}/`); // Redirect to the homepage or login page
-    });
-  });
-});
 
 // Get current user
 app.get('/api/user', (req, res) => {
+  console.log("Session:", req.session);
+  console.log("User:", req.user);
   if (req.isAuthenticated()) {
     res.json({ user: req.user });
   } else {
-    res.status(401).json({ error: 'Not authenticated' });
+    res.status(401).send("Not authenticated");
   }
 });
+
 
 // List GitHub repos
 app.get('/api/repos', async (req, res) => {
