@@ -9,7 +9,6 @@ const resetFileContentRoute = require('./routes/reset-filecontent');
 const createComponentsRouter = require('./routes/createcomponents');
 const GitHubStrategy = require('passport-github').Strategy;
 
-
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5010;
