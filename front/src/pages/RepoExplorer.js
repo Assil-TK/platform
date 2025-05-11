@@ -1,4 +1,3 @@
-// pages/RepoExplorer.js
 import React, { useEffect, useState } from 'react';
 import { fetchUser, fetchRepos, fetchFiles, fetchFileContent } from '../api/githubApi';
 import { useNavigate } from 'react-router-dom';
@@ -19,27 +18,28 @@ const RepoExplorer = () => {
 
   const navigate = useNavigate();
 
+  // Fetch user information and check JWT token
   useEffect(() => {
     fetchUser()
       .then(setUser)
       .catch(() => window.location.href = '/');
   }, []);
 
-
+  // Reset file content state on mount
   useEffect(() => {
-    // Reset preview filecontent.js on mount
     fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
     });
   }, []);
 
-
+  // Fetch repositories when user is loaded
   useEffect(() => {
     if (user) {
       fetchRepos().then(setRepos).catch(console.error);
     }
   }, [user]);
 
+  // Fetch files when a repository is selected
   useEffect(() => {
     if (selectedRepo) {
       setLoading(true);
@@ -50,6 +50,7 @@ const RepoExplorer = () => {
     }
   }, [selectedRepo]);
 
+  // Handle file click, fetch content of the selected file
   const handleFileClick = async (filePath) => {
     try {
       const { content, encoding } = await fetchFileContent(selectedRepo, filePath);
@@ -78,10 +79,12 @@ const RepoExplorer = () => {
     }
   };
 
+  // Navigate to file editing page
   const handleEditClick = (filePath, content) => {
     navigate('/edit-file', { state: { fileContent: content, selectedRepo, selectedFile: filePath } });
   };
 
+  // Toggle folder open/close and load folder contents
   const toggleFolder = async (folderPath) => {
     const isOpen = openFolders[folderPath];
     setOpenFolders(prev => ({ ...prev, [folderPath]: !isOpen }));
@@ -99,6 +102,7 @@ const RepoExplorer = () => {
     }
   };
 
+  // Update the file tree structure with the new files in the folder
   const updateFileTree = (tree, folderPath, newFiles, currentPath = '') => {
     return tree.map(file => {
       const fullPath = `${currentPath}/${file.name}`;
