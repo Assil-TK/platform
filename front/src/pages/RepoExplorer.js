@@ -31,7 +31,6 @@ const RepoExplorer = () => {
       method: 'POST',
     });
   }, []);
-  
 
   useEffect(() => {
     if (user) {
@@ -51,7 +50,8 @@ const RepoExplorer = () => {
 
   const handleFileClick = async (filePath) => {
     try {
-      const { content, encoding } = await fetchFileContent(selectedRepo, filePath);
+      const encodedPath = filePath.replace(/\//g, '--'); // Encode path
+      const { content, encoding } = await fetchFileContent(selectedRepo, encodedPath);
       setSelectedFile(filePath);
 
       if (encoding === 'base64') {

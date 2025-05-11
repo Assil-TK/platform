@@ -1,9 +1,14 @@
 // ../api/githubApi
 
+const headers = {
+  'Content-Type': 'application/json'
+};
+
 // Fetch current logged-in user details
 export async function fetchUser() {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, {
     credentials: 'include',
+    headers
   });
 
   if (!res.ok) {
@@ -18,6 +23,7 @@ export async function fetchUser() {
 export async function fetchRepos() {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/repos`, {
     credentials: 'include',
+    headers
   });
 
   if (!res.ok) {
@@ -32,6 +38,7 @@ export async function fetchRepos() {
 export async function fetchFiles(repo, path = '') {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/files?repo=${repo}&path=${path}`, {
     credentials: 'include',
+    headers
   });
 
   if (!res.ok) {
@@ -46,6 +53,7 @@ export async function fetchFiles(repo, path = '') {
 export async function fetchFileContent(repo, path) {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/file-content?repo=${repo}&path=${path}`, {
     credentials: 'include',
+    headers
   });
 
   if (!res.ok) {
@@ -60,11 +68,9 @@ export async function fetchFileContent(repo, path) {
 export async function updateFileContent(repo, path, content, sha, message) {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/update-file`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({ repo, path, content, sha, message }),
-    credentials: 'include', // Make sure the session cookie is included
+    credentials: 'include',
   });
 
   if (!res.ok) {

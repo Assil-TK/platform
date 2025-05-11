@@ -18,6 +18,7 @@ const EditFile = () => {
   const [loading, setLoading] = useState(true);
   const [sha, setSha] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  const [fileType, setFileType] = useState('text');  // For handling binary/text files
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,9 +31,10 @@ const EditFile = () => {
     const loadFile = async () => {
       if (!selectedRepo || !selectedFile) return;
       try {
-        const { content, sha } = await fetchFileContent(selectedRepo, selectedFile);
+        const { content, sha, encoding } = await fetchFileContent(selectedRepo, selectedFile);
         setContent(content);
         setSha(sha);
+        setFileType(encoding === 'base64' ? 'binary' : 'text');
         if (user) {
           updateFileContentInPlatform(content, selectedFile);
         }
@@ -82,7 +84,6 @@ const EditFile = () => {
           if (item.type === 'dir') {
             const dirName = item.name.toLowerCase();
   
-            // If folder name is 'component' or 'components'
             if (dirName === 'component' || dirName === 'components') {
               const compFolderFiles = await axios.get(item.url);
               for (const file of compFolderFiles.data) {
@@ -92,7 +93,6 @@ const EditFile = () => {
                 }
               }
             } else {
-              // Recurse into other directories
               const nestedFiles = await fetchComponentFiles(item.path);
               filesToSend = filesToSend.concat(nestedFiles);
             }
@@ -110,8 +110,6 @@ const EditFile = () => {
       console.error('Failed to send components to backend:', err.response?.data || err.message);
     }
   };
-  
-  
 
   const handleSave = async () => {
     try {
@@ -153,16 +151,26 @@ const EditFile = () => {
       <UserInfoWithTree user={user} selectedRepo={selectedRepo} selectedFile={selectedFile} />
 
       <br />
-      <textarea
-        value={content}
-        onChange={(e) => {
-          setContent(e.target.value);
-          updateFileContentInPlatform(e.target.value, selectedFile);
-        }}
-        rows={25}
-        cols={100}
-        style={{ whiteSpace: 'pre', fontFamily: 'monospace' }}
-      />
+      {fileType === 'text' ? (
+        <textarea
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value);
+            updateFileContentInPlatform(e.target.value, selectedFile);
+          }}
+          rows={25}
+          cols={100}
+          style={{ whiteSpace: 'pre', fontFamily: 'monospace' }}
+        />
+      ) : (
+        <div>
+          {content.startsWith('data:image/') ? (
+            <img src={content} alt="Preview" />
+          ) : (
+            <p>{content}</p>
+          )}
+        </div>
+      )}
 
       <PreviewBox />
 
