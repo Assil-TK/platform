@@ -1,8 +1,8 @@
-//../api/githubApi
+// ../api/githubApi
 
 // Fetch current logged-in user details
 export async function fetchUser() {
-  const res = await fetch('http://localhost:5010/api/user', {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, {
     credentials: 'include',
   });
 
@@ -16,7 +16,7 @@ export async function fetchUser() {
 
 // Fetch user's repositories
 export async function fetchRepos() {
-  const res = await fetch('http://localhost:5010/api/repos', {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/repos`, {
     credentials: 'include',
   });
 
@@ -30,7 +30,7 @@ export async function fetchRepos() {
 
 // Fetch files from a specific repo and path
 export async function fetchFiles(repo, path = '') {
-  const res = await fetch(`http://localhost:5010/api/files?repo=${repo}&path=${path}`, {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/files?repo=${repo}&path=${path}`, {
     credentials: 'include',
   });
 
@@ -44,7 +44,7 @@ export async function fetchFiles(repo, path = '') {
 
 // Fetch content of a specific file from a repo
 export async function fetchFileContent(repo, path) {
-  const res = await fetch(`http://localhost:5010/api/file-content?repo=${repo}&path=${path}`, {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/file-content?repo=${repo}&path=${path}`, {
     credentials: 'include',
   });
 
@@ -58,7 +58,7 @@ export async function fetchFileContent(repo, path) {
 
 // Update content of a file in a repo
 export async function updateFileContent(repo, path, content, sha, message) {
-  const res = await fetch('http://localhost:5010/api/update-file', {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/update-file`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -27,7 +27,7 @@ const RepoExplorer = () => {
 
   useEffect(() => {
     // Reset preview filecontent.js on mount
-    fetch('http://localhost:5010/api/reset-filecontent', {
+    fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
     });
   }, []);

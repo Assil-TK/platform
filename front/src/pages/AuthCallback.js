@@ -8,7 +8,7 @@ const AuthCallback = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch('http://localhost:5010/auth/github/callback' + window.location.search, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/github/callback` + window.location.search, {
           credentials: 'include'
         });
 
