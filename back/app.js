@@ -33,14 +33,14 @@ passport.use(new GitHubStrategy({
   callbackURL: process.env.GITHUB_CALLBACK_URL
 }, (accessToken, refreshToken, profile, done) => {
   profile.accessToken = accessToken;
-  return done(null, profile);
+  return done(null, profile); // No session involved here
 }));
 
 // OAuth routes
 app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
 
-app.get('/auth/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/' }), 
+app.get('/auth/github/callback',
+  passport.authenticate('github', { failureRedirect: '/' }),
   (req, res) => {
     console.log('GitHub Authenticated User:', req.user);
 
