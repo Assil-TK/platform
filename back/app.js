@@ -65,16 +65,16 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
 app.get('/auth/github/callback',
   passport.authenticate('github', { failureRedirect: '/auth/github/failure' }),
   (req, res) => {
-    // Successful authentication
-    console.log('GitHub Authenticated User:', req.user);
+    // ✅ Store user in session manually
+    req.session.user = req.user;
+
+    console.log("Session after GitHub login:", req.session);
+    console.log("User after GitHub login:", req.user);
+
     res.redirect(`${process.env.FRONTEND_URL}/repo-explorer?auth=success`);
   }
 );
 
-// Separate route for failure handling
-app.get('/auth/github/failure', (req, res) => {
-  res.redirect(`${process.env.FRONTEND_URL}/repo-explorer?auth=failure`);
-});
 
 
 
