@@ -63,21 +63,19 @@ passport.deserializeUser((user, done) => {
 app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
 
 app.get('/auth/github/callback',
-  passport.authenticate('github', { failureRedirect: '/' }),
+  passport.authenticate('github', { failureRedirect: '/auth/github/failure' }),
   (req, res) => {
+    // Successful authentication
     console.log('GitHub Authenticated User:', req.user);
-    console.log('Session after GitHub authentication:', req.session);
-
-    if (req.isAuthenticated()) {
-      console.log('User is authenticated, redirecting to frontend...');
-      console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
-      res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
-    } else {
-      console.error('User authentication failed');
-      res.redirect('/error');  // Redirect to a custom error page (optional)
-    }
+    res.redirect(`${process.env.FRONTEND_URL}/repo-explorer?auth=success`);
   }
 );
+
+// Separate route for failure handling
+app.get('/auth/github/failure', (req, res) => {
+  res.redirect(`${process.env.FRONTEND_URL}/repo-explorer?auth=failure`);
+});
+
 
 
 // Get current user
