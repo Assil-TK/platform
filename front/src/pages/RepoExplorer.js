@@ -1,6 +1,7 @@
+// pages/RepoExplorer.js
 import React, { useEffect, useState } from 'react';
 import { fetchUser, fetchRepos, fetchFiles, fetchFileContent } from '../api/githubApi';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import RepoSelector from '../components/RepoSelector';
 import FileTree from '../components/FileTree';
 
@@ -15,131 +16,107 @@ const RepoExplorer = () => {
   const [openFolders, setOpenFolders] = useState({});
   const [loading, setLoading] = useState(false);
   const [previewComponent, setPreviewComponent] = useState(null);
-  const [message, setMessage] = useState(null);
-  const [status, setStatus] = useState('loading'); // loading | authenticated | unauthenticated
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const authStatus = params.get('auth');
-
-    if (authStatus === 'failure') {
-      setMessage({ type: 'error', text: 'Authentication failed. Please try again.' });
-    } else if (authStatus === 'success') {
-      setMessage({ type: 'success', text: 'Successfully authenticated with GitHub!' });
-    }
-
     fetchUser()
-      .then(res => {
-        setUser(res.user);
-        setStatus('authenticated');
-        setMessage(null);
-      })
-      .catch(() => {
-        setStatus('unauthenticated');
-        setMessage({ type: 'error', text: 'Not logged in. Please authenticate.' });
-      });
+      .then(res => setUser(res.user))
+      .catch(() => window.location.href = '/');
+  }, []);
 
+  useEffect(() => {
+    // Reset preview filecontent.js on mount
     fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
     });
-  }, [location.search]);
+  }, []);
+  
 
   useEffect(() => {
     if (user) {
-      fetchRepos()
-        .then(setRepos)
-        .catch(err => {
-          console.error(err);
-          setMessage({ type: 'error', text: 'Failed to load repositories.' });
-        });
+      fetchRepos().then(setRepos).catch(console.error);
     }
   }, [user]);
 
-  const handleFileClick = (filePath) => {
-    setLoading(true);
-    setSelectedFile(filePath);
-    fetchFileContent(selectedRepo, filePath)
-      .then(({ content, type }) => {
-        setFileContent(content);
-        setFileType(type);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setFileContent('Error loading file content.');
+  useEffect(() => {
+    if (selectedRepo) {
+      setLoading(true);
+      fetchFiles(selectedRepo)
+        .then(setFileTree)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [selectedRepo]);
+
+  const handleFileClick = async (filePath) => {
+    try {
+      const { content, encoding } = await fetchFileContent(selectedRepo, filePath);
+      setSelectedFile(filePath);
+
+      if (encoding === 'base64') {
+        setFileType('binary');
+        const ext = filePath.split('.').pop().toLowerCase();
+        if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
+          setFileContent(`data:image/${ext};base64,${content}`);
+        } else {
+          setFileContent('Binary file content cannot be displayed.');
+        }
+      } else {
         setFileType('text');
-        setLoading(false);
-      });
-  };
-
-  const handleEditClick = () => {
-    // Placeholder for edit functionality
-    console.log('Edit clicked');
-  };
-
-  const toggleFolder = (folderPath) => {
-    setOpenFolders(prev => ({
-      ...prev,
-      [folderPath]: !prev[folderPath],
-    }));
-
-    if (!openFolders[folderPath]) {
-      fetchFiles(selectedRepo, folderPath)
-        .then(files => {
-          setFileTree(prev => [...prev, ...files]);
-        })
-        .catch(err => {
-          console.error(err);
-          setMessage({ type: 'error', text: 'Failed to load folder contents.' });
-        });
+        setFileContent(content);
+        if (filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
+          const Component = () => <div dangerouslySetInnerHTML={{ __html: content }} />;
+          setPreviewComponent(Component);
+        } else {
+          setPreviewComponent(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load file content:', err);
     }
   };
 
-  if (status === 'loading') {
-    return <div>Loading session...</div>;
-  }
+  const handleEditClick = (filePath, content) => {
+    navigate('/edit-file', { state: { fileContent: content, selectedRepo, selectedFile: filePath } });
+  };
 
-  if (status === 'unauthenticated') {
-    return (
-      <div>
-        {message && (
-          <div
-            style={{
-              padding: '10px',
-              margin: '10px 0',
-              border: '1px solid red',
-              backgroundColor: '#ffe6e6',
-              color: 'red',
-            }}
-          >
-            {message.text}
-          </div>
-        )}
-        <a href="/">Go to login</a>
-      </div>
-    );
-  }
+  const toggleFolder = async (folderPath) => {
+    const isOpen = openFolders[folderPath];
+    setOpenFolders(prev => ({ ...prev, [folderPath]: !isOpen }));
+
+    if (!isOpen) {
+      try {
+        setLoading(true);
+        const files = await fetchFiles(selectedRepo, folderPath);
+        setFileTree(prev => updateFileTree(prev, folderPath, files));
+      } catch (err) {
+        console.error('Failed to load folder contents:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const updateFileTree = (tree, folderPath, newFiles, currentPath = '') => {
+    return tree.map(file => {
+      const fullPath = `${currentPath}/${file.name}`;
+      if (file.type === 'dir') {
+        if (fullPath === folderPath) {
+          return { ...file, children: newFiles };
+        } else if (file.children) {
+          return {
+            ...file,
+            children: updateFileTree(file.children, folderPath, newFiles, fullPath),
+          };
+        }
+      }
+      return file;
+    });
+  };
 
   return (
     <div>
-      {message && (
-        <div
-          style={{
-            padding: '10px',
-            margin: '10px 0',
-            border: '1px solid',
-            borderColor: message.type === 'error' ? 'red' : 'green',
-            color: message.type === 'error' ? 'red' : 'green',
-            backgroundColor: message.type === 'error' ? '#ffe6e6' : '#e6ffe6'
-          }}
-        >
-          {message.text}
-        </div>
-      )}
-
       <h2>Welcome, {user?.username || user?.login}</h2>
 
       <RepoSelector repos={repos} selectedRepo={selectedRepo} onSelectRepo={setSelectedRepo} />
@@ -161,9 +138,7 @@ const RepoExplorer = () => {
       {selectedFile && (
         <div>
           <h4>File Content</h4>
-          {loading ? (
-            <p>Loading file...</p>
-          ) : fileType === 'text' ? (
+          {fileType === 'text' ? (
             <pre>{fileContent}</pre>
           ) : (
             <div>
