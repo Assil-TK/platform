@@ -15,10 +15,11 @@ const RepoExplorer = () => {
   const [openFolders, setOpenFolders] = useState({});
   const [loading, setLoading] = useState(false);
   const [previewComponent, setPreviewComponent] = useState(null);
-  const [message, setMessage] = useState(null);  // ✅ NEW: message state
+  const [message, setMessage] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading | authenticated | unauthenticated
 
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ NEW: to read query params
+  const location = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -30,30 +31,97 @@ const RepoExplorer = () => {
       setMessage({ type: 'success', text: 'Successfully authenticated with GitHub!' });
     }
 
-    // Always attempt to fetch user (can fail and show error)
     fetchUser()
       .then(res => {
         setUser(res.user);
-        setMessage(null); // clear message if user loads fine
+        setStatus('authenticated');
+        setMessage(null);
       })
       .catch(() => {
+        setStatus('unauthenticated');
         setMessage({ type: 'error', text: 'Not logged in. Please authenticate.' });
       });
 
-    // Reset preview filecontent.js
     fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
     });
-
-  }, [location.search]); // ✅ trigger on location.search change
+  }, [location.search]);
 
   useEffect(() => {
     if (user) {
-      fetchRepos().then(setRepos).catch(console.error);
+      fetchRepos()
+        .then(setRepos)
+        .catch(err => {
+          console.error(err);
+          setMessage({ type: 'error', text: 'Failed to load repositories.' });
+        });
     }
   }, [user]);
 
-  // ... (rest of your unchanged useEffects and functions)
+  const handleFileClick = (filePath) => {
+    setLoading(true);
+    setSelectedFile(filePath);
+    fetchFileContent(selectedRepo, filePath)
+      .then(({ content, type }) => {
+        setFileContent(content);
+        setFileType(type);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setFileContent('Error loading file content.');
+        setFileType('text');
+        setLoading(false);
+      });
+  };
+
+  const handleEditClick = () => {
+    // Placeholder for edit functionality
+    console.log('Edit clicked');
+  };
+
+  const toggleFolder = (folderPath) => {
+    setOpenFolders(prev => ({
+      ...prev,
+      [folderPath]: !prev[folderPath],
+    }));
+
+    if (!openFolders[folderPath]) {
+      fetchFiles(selectedRepo, folderPath)
+        .then(files => {
+          setFileTree(prev => [...prev, ...files]);
+        })
+        .catch(err => {
+          console.error(err);
+          setMessage({ type: 'error', text: 'Failed to load folder contents.' });
+        });
+    }
+  };
+
+  if (status === 'loading') {
+    return <div>Loading session...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <div>
+        {message && (
+          <div
+            style={{
+              padding: '10px',
+              margin: '10px 0',
+              border: '1px solid red',
+              backgroundColor: '#ffe6e6',
+              color: 'red',
+            }}
+          >
+            {message.text}
+          </div>
+        )}
+        <a href="/">Go to login</a>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -93,7 +161,9 @@ const RepoExplorer = () => {
       {selectedFile && (
         <div>
           <h4>File Content</h4>
-          {fileType === 'text' ? (
+          {loading ? (
+            <p>Loading file...</p>
+          ) : fileType === 'text' ? (
             <pre>{fileContent}</pre>
           ) : (
             <div>
