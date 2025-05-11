@@ -29,12 +29,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,              // true = cookie sent only over HTTPS
+    secure: false, // allow over HTTP for localhost
     httpOnly: true,
-    sameSite: 'None'           // REQUIRED for cross-site cookies
+    sameSite: 'Lax', // allow cross-path cookies but restrict CSRF
   }
 }));
-
 
 
 // Passport setup
@@ -63,19 +62,21 @@ passport.deserializeUser((user, done) => {
 app.get('/auth/github', passport.authenticate('github', { scope: ['repo'] }));
 
 app.get('/auth/github/callback',
-  passport.authenticate('github', { failureRedirect: '/auth/github/failure' }),
+  passport.authenticate('github', { failureRedirect: '/' }),
   (req, res) => {
-    // ✅ Store user in session manually
-    req.session.user = req.user;
+    console.log('GitHub Authenticated User:', req.user);
+    console.log('Session after GitHub authentication:', req.session);
 
-    console.log("Session after GitHub login:", req.session);
-    console.log("User after GitHub login:", req.user);
-
-    res.redirect(`${process.env.FRONTEND_URL}/repo-explorer?auth=success`);
+    if (req.isAuthenticated()) {
+      console.log('User is authenticated, redirecting to frontend...');
+      console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
+      res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+    } else {
+      console.error('User authentication failed');
+      res.redirect('/error');  // Redirect to a custom error page (optional)
+    }
   }
 );
-
-
 
 
 // Get current user
@@ -222,6 +223,7 @@ app.post('/api/update-file', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
