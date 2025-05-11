@@ -29,12 +29,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,            // ⚠️ MUST be true in production
+    secure: true, // allow over HTTP for localhost
     httpOnly: true,
-    sameSite: 'None',        // ⚠️ Required for cross-site cookies
+    sameSite: 'Lax', // allow cross-path cookies but restrict CSRF
   }
 }));
-
 
 
 // Passport setup
