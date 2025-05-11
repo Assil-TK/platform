@@ -21,9 +21,10 @@ const RepoExplorer = () => {
 
   useEffect(() => {
     fetchUser()
-      .then(res => setUser(res.user))
+      .then(setUser)
       .catch(() => window.location.href = '/');
   }, []);
+
 
   useEffect(() => {
     // Reset preview filecontent.js on mount
@@ -31,7 +32,7 @@ const RepoExplorer = () => {
       method: 'POST',
     });
   }, []);
-  
+
 
   useEffect(() => {
     if (user) {

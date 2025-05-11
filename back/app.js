@@ -79,6 +79,12 @@ app.get('/auth/github/callback',
   }
 );
 
+app.get('/getuser', (req, res) => {
+  console.log('Session in /getuser:', req.session);
+  console.log('User in /getuser:', req.user);
+  res.json(req.user || null);
+});
+
 
 
 // Get current user
