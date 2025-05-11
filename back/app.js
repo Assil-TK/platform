@@ -68,15 +68,17 @@ app.get('/auth/github/callback',
     console.log('Session after GitHub authentication:', req.session);
 
     if (req.isAuthenticated()) {
-      console.log('User is authenticated, redirecting to frontend...');
-      console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
-      res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+      req.session.save(() => {
+        console.log('Session saved, redirecting to frontend...');
+        res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
+      });
     } else {
       console.error('User authentication failed');
-      res.redirect('/error');  // Redirect to a custom error page (optional)
+      res.redirect('/error');
     }
   }
 );
+
 
 
 // Get current user
