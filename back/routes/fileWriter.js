@@ -75,7 +75,15 @@ router.get('/filecontent', (req, res) => {
   try {
     const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
     const content = fs.readFileSync(filePath, 'utf8');
-    res.set('Content-Type', 'application/javascript');
+    
+    // Set cache control headers to prevent caching
+    res.set({
+      'Content-Type': 'application/javascript',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     res.send(content);
   } catch (error) {
     console.error('Error reading file content:', error);
