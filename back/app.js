@@ -15,8 +15,11 @@ const app = express();
 const PORT = process.env.PORT || 5010;
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL, // ou process.env.FRONTEND_URL si tu le préfères
-  credentials: true
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
 }));
 
 app.use(express.json());
@@ -29,9 +32,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',  // true for production, false for development
+    secure: true,  // Always use secure in production
     httpOnly: true,
-    sameSite: 'None'  // REQUIRED for cross-site cookies
+    sameSite: 'None',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    domain: process.env.NODE_ENV === 'production' ? '.render.com' : undefined // Adjust domain for production
   }
 }));
 
@@ -66,12 +71,14 @@ app.get('/auth/github/callback',
   (req, res) => {
     console.log('GitHub Authenticated User:', req.user);
     console.log('Session after GitHub authentication:', req.session);
+    console.log('Session ID after auth:', req.sessionID);
+    console.log('Cookies after auth:', req.cookies);
 
     if (req.isAuthenticated()) {
       console.log('User is authenticated, redirecting to frontend...');
       console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
 
-      // 🔐 Force la sauvegarde de la session avant la redirection
+      // Force session save before redirect
       req.session.save(err => {
         if (err) {
           console.error('Error saving session:', err);
@@ -89,8 +96,12 @@ app.get('/auth/github/callback',
 
 // Get current user
 app.get('/api/user', (req, res) => {
+  console.log("Session ID:", req.sessionID);
   console.log("Session:", req.session);
   console.log("User:", req.user);
+  console.log("Is Authenticated:", req.isAuthenticated());
+  console.log("Cookies:", req.cookies);
+  
   if (req.isAuthenticated()) {
     res.json({ user: req.user });
   } else {

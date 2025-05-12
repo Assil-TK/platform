@@ -1,15 +1,18 @@
 // ../api/githubApi
 
 const headers = {
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+};
+
+const fetchOptions = {
+  credentials: 'include',
+  headers
 };
 
 // Fetch current logged-in user details
 export async function fetchUser() {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, {
-    credentials: 'include',
-    headers
-  });
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, fetchOptions);
 
   if (!res.ok) {
     const errorDetails = await res.text();
@@ -21,10 +24,7 @@ export async function fetchUser() {
 
 // Fetch user's repositories
 export async function fetchRepos() {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/repos`, {
-    credentials: 'include',
-    headers
-  });
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/repos`, fetchOptions);
 
   if (!res.ok) {
     const errorDetails = await res.text();
@@ -36,10 +36,7 @@ export async function fetchRepos() {
 
 // Fetch files from a specific repo and path
 export async function fetchFiles(repo, path = '') {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/files?repo=${repo}&path=${path}`, {
-    credentials: 'include',
-    headers
-  });
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/files?repo=${repo}&path=${path}`, fetchOptions);
 
   if (!res.ok) {
     const errorDetails = await res.text();
@@ -51,10 +48,7 @@ export async function fetchFiles(repo, path = '') {
 
 // Fetch content of a specific file from a repo
 export async function fetchFileContent(repo, path) {
-  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/file-content?repo=${repo}&path=${path}`, {
-    credentials: 'include',
-    headers
-  });
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/file-content?repo=${repo}&path=${path}`, fetchOptions);
 
   if (!res.ok) {
     const errorDetails = await res.text();
@@ -67,10 +61,9 @@ export async function fetchFileContent(repo, path) {
 // Update content of a file in a repo
 export async function updateFileContent(repo, path, content, sha, message) {
   const res = await fetch(`${process.env.REACT_APP_API_URL}/api/update-file`, {
+    ...fetchOptions,
     method: 'POST',
-    headers,
-    body: JSON.stringify({ repo, path, content, sha, message }),
-    credentials: 'include',
+    body: JSON.stringify({ repo, path, content, sha, message })
   });
 
   if (!res.ok) {
