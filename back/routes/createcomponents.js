@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-
-// In-memory storage for components
-const components = new Map();
+const fs = require('fs');
+const path = require('path');
 
 // POST route to save imported components
 router.post('/api/save-imported-components', async (req, res) => {
@@ -17,10 +16,19 @@ router.post('/api/save-imported-components', async (req, res) => {
   }
 
   try {
-    // Clear existing components
-    components.clear();
+    // Create components directory if it doesn't exist
+    const componentsDir = path.join(__dirname, '../../front/src/importedcomponents');
+    if (!fs.existsSync(componentsDir)) {
+      fs.mkdirSync(componentsDir, { recursive: true });
+    }
 
-    // Store new components in memory
+    // Clear existing components
+    const existingFiles = fs.readdirSync(componentsDir);
+    for (const file of existingFiles) {
+      fs.unlinkSync(path.join(componentsDir, file));
+    }
+
+    // Store new components
     for (const file of files) {
       const { filename, content } = file;
       
@@ -29,13 +37,13 @@ router.post('/api/save-imported-components', async (req, res) => {
         continue;
       }
       
-      // Only keep the base name of the file (e.g., HeroSection.jsx)
       const componentName = filename.split('/').pop();
-      components.set(componentName, content);
+      const filePath = path.join(componentsDir, componentName);
+      
+      fs.writeFileSync(filePath, content);
       console.log(`Stored component: ${componentName}`);
     }
 
-    // Send success response
     res.status(200).json({ message: 'All components stored successfully!' });
   } catch (err) {
     console.error('Error storing components:', err);
@@ -46,26 +54,54 @@ router.post('/api/save-imported-components', async (req, res) => {
 // GET route to retrieve a specific component
 router.get('/api/component/:name', (req, res) => {
   const { name } = req.params;
-  const component = components.get(name);
   
-  if (!component) {
-    return res.status(404).json({ error: 'Component not found' });
-  }
+  try {
+    const componentPath = path.join(__dirname, '../../front/src/importedcomponents', name);
+    if (!fs.existsSync(componentPath)) {
+      return res.status(404).json({ error: 'Component not found' });
+    }
 
-  res.set('Content-Type', 'application/javascript');
-  res.send(component);
+    const content = fs.readFileSync(componentPath, 'utf8');
+    res.set('Content-Type', 'application/javascript');
+    res.send(content);
+  } catch (err) {
+    console.error('Error reading component:', err);
+    res.status(500).json({ error: 'Failed to read component' });
+  }
 });
 
 // GET route to list all available components
 router.get('/api/components', (req, res) => {
-  const componentList = Array.from(components.keys());
-  res.json({ components: componentList });
+  try {
+    const componentsDir = path.join(__dirname, '../../front/src/importedcomponents');
+    if (!fs.existsSync(componentsDir)) {
+      return res.json({ components: [] });
+    }
+    
+    const componentList = fs.readdirSync(componentsDir);
+    res.json({ components: componentList });
+  } catch (err) {
+    console.error('Error listing components:', err);
+    res.status(500).json({ error: 'Failed to list components' });
+  }
 });
 
 // POST route to reset components
 router.post('/api/reset-components', (req, res) => {
-  components.clear();
-  res.json({ message: 'All components cleared successfully!' });
+  try {
+    const componentsDir = path.join(__dirname, '../../front/src/importedcomponents');
+    if (fs.existsSync(componentsDir)) {
+      const files = fs.readdirSync(componentsDir);
+      for (const file of files) {
+        fs.unlinkSync(path.join(componentsDir, file));
+      }
+    }
+    
+    res.json({ message: 'All components cleared successfully!' });
+  } catch (err) {
+    console.error('Error clearing components:', err);
+    res.status(500).json({ error: 'Failed to clear components' });
+  }
 });
 
 module.exports = router;

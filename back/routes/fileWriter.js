@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
 const path = require('path');
-
-// In-memory storage for file content
-let currentFileContent = '// Auto-cleared preview file';
 
 // Function to transform content for preview
 const transformContent = (content, username, repoUrl, branch, selectedFile) => {
@@ -55,10 +53,13 @@ router.post('/write-file-content', async (req, res) => {
       return res.status(400).json({ error: 'No content provided' });
     }
 
-    // Transform and store the content
+    // Transform the content
     const transformedContent = transformContent(content, username, repoUrl, branch, selectedFile);
-    currentFileContent = transformedContent;
-    console.log('Updated file content in memory');
+
+    // Write to filecontent.js
+    const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
+    fs.writeFileSync(filePath, transformedContent);
+    console.log('Updated file content in filecontent.js');
     
     res.json({ message: 'File content updated successfully' });
   } catch (error) {
@@ -70,15 +71,30 @@ router.post('/write-file-content', async (req, res) => {
 // GET route to retrieve file content
 router.get('/filecontent', (req, res) => {
   console.log('Retrieving file content');
-  res.set('Content-Type', 'application/javascript');
-  res.send(currentFileContent);
+  
+  try {
+    const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
+    const content = fs.readFileSync(filePath, 'utf8');
+    res.set('Content-Type', 'application/javascript');
+    res.send(content);
+  } catch (error) {
+    console.error('Error reading file content:', error);
+    res.status(500).json({ error: 'Failed to read file content' });
+  }
 });
 
 // POST route to reset file content
 router.post('/reset-filecontent', (req, res) => {
   console.log('Resetting file content');
-  currentFileContent = '// Auto-cleared preview file';
-  res.json({ message: 'File content reset successfully' });
+  
+  try {
+    const filePath = path.join(__dirname, '../../front/src/pages/filecontent.js');
+    fs.writeFileSync(filePath, '// Auto-cleared preview file');
+    res.json({ message: 'File content reset successfully' });
+  } catch (error) {
+    console.error('Error resetting file content:', error);
+    res.status(500).json({ error: 'Failed to reset file content' });
+  }
 });
 
 module.exports = router;
