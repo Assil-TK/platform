@@ -8,7 +8,7 @@ const cors = require('cors');
 const saveContentRoute = require('./routes/fileWriter');
 const resetFileContentRoute = require('./routes/reset-filecontent');
 const createComponentsRouter = require('./routes/createcomponents');
-
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 const app = express();
@@ -18,8 +18,10 @@ app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['set-cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['set-cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.use(express.json());
@@ -29,18 +31,23 @@ app.use(createComponentsRouter);
 // Session middleware
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   cookie: {
-    secure: true,  // Always use secure in production
+    secure: true,
     httpOnly: true,
     sameSite: 'None',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    domain: process.env.NODE_ENV === 'production' ? '.render.com' : undefined // Adjust domain for production
-  }
+    domain: process.env.NODE_ENV === 'production' ? '.render.com' : undefined
+  },
+  name: 'sessionId'
 }));
 
+// Add cookie parser middleware
+app.use(cookieParser());
 
+// Add trust proxy for secure cookies
+app.set('trust proxy', 1);
 
 // Passport setup
 app.use(passport.initialize());
@@ -79,11 +86,20 @@ app.get('/auth/github/callback',
       console.log('Redirecting to frontend URL:', `${process.env.FRONTEND_URL}/repo-explorer`);
 
       // Force session save before redirect
-      req.session.save(err => {
+      req.session.save((err) => {
         if (err) {
           console.error('Error saving session:', err);
           return res.redirect('/error');
         }
+        
+        // Set a test cookie to verify cookie handling
+        res.cookie('testCookie', 'sessionWorking', {
+          secure: true,
+          httpOnly: true,
+          sameSite: 'None',
+          domain: process.env.NODE_ENV === 'production' ? '.render.com' : undefined
+        });
+
         res.redirect(`${process.env.FRONTEND_URL}/repo-explorer`);
       });
     } else {
@@ -93,6 +109,20 @@ app.get('/auth/github/callback',
   }
 );
 
+// Add a test endpoint to verify session
+app.get('/api/test-session', (req, res) => {
+  console.log('Test Session - Session ID:', req.sessionID);
+  console.log('Test Session - Session:', req.session);
+  console.log('Test Session - Cookies:', req.cookies);
+  console.log('Test Session - Is Authenticated:', req.isAuthenticated());
+  
+  res.json({
+    sessionId: req.sessionID,
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user,
+    cookies: req.cookies
+  });
+});
 
 // Get current user
 app.get('/api/user', (req, res) => {
