@@ -56,9 +56,17 @@ const EditFile = () => {
       const branch = 'main';
       const username = user?.username || user?.login;
 
-      // Update the preview content
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/update-preview`, {
-        content: `// Auto-generated preview file\nimport '../components/blockNavigation';\n${content}`
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/write-file-content`, {
+        content,
+        repoUrl,
+        branch,
+        selectedFile,
+        username
+      }, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     } catch (error) {
       console.error('Failed to update preview:', error.response?.data || error.message);
@@ -68,8 +76,14 @@ const EditFile = () => {
   useEffect(() => {
     // Reset preview content on mount
     console.log('Resetting file content preview on mount...');
-    fetch(`${process.env.REACT_APP_API_URL}/api/reset-preview`, {
+    fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
       method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).catch(error => {
+      console.error('Error resetting preview:', error);
     });
   }, []);
 

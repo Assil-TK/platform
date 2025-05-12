@@ -25,9 +25,11 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/api', saveContentRoute);
-app.use('/api/reset-filecontent', resetFileContentRoute);
+
+// Mount routes
+app.use('/api', saveContentRoute);  // This will handle /api/write-file-content, /api/filecontent, and /api/reset-filecontent
 app.use(createComponentsRouter);
+
 // Session middleware
 app.use(session({
   secret: process.env.SESSION_SECRET,
