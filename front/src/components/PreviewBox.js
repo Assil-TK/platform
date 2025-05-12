@@ -8,6 +8,7 @@ const PreviewBox = () => (
       width="100%"
       height="100%"
       style={{ border: 'none' }}
+      sandbox="allow-scripts allow-same-origin"
     />
   </div>
 );

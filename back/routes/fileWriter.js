@@ -5,59 +5,44 @@ const path = require('path');
 // In-memory storage for file content
 let currentFileContent = '// Auto-cleared preview file';
 
-// Core function to transform content
-const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) => {
+// Function to transform content for preview
+const transformContent = (content, username, repoUrl, branch, selectedFile) => {
   const repoPath = repoUrl.replace('https://github.com', '');
-  const selectedDir = path.dirname(selectedFile).replace(/^\/+/, ''); // Remove leading slashes
+  const selectedDir = selectedFile.split('/').slice(0, -1).join('/').replace(/^\/+/, '');
 
-  const adjustPath = (originalPath) => {
-    let cleanPath = originalPath.replace(/^(\.\/|\/)/, '');
-    if (originalPath.startsWith('/') && !originalPath.startsWith('./')) {
-      cleanPath = `../${cleanPath}`;
-    }
-    return cleanPath;
-  };
-
-  // Step 1: Replace imports like import logo from '../assets/logo.png';
+  // Transform image imports
   content = content.replace(
     /import\s+(\w+)\s+from\s+['"](.+\.(png|jpg|jpeg|gif|svg))['"]/g,
     (match, varName, relPath) => {
-      const cleanPath = adjustPath(relPath);
+      const cleanPath = relPath.replace(/^(\.\/|\/)/, '');
       const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
       return `const ${varName} = "${rawUrl}"`;
     }
   );
 
-  // Step 2: Replace direct JSX image src attributes like: <img src="/assets/img.png" />
+  // Transform image src attributes
   content = content.replace(
     /src\s*=\s*["'](\/?[a-zA-Z0-9\-_/\.]+)["']/g,
     (match, imgPath) => {
-      const cleanPath = adjustPath(imgPath);
+      const cleanPath = imgPath.replace(/^(\.\/|\/)/, '');
       const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
       return `src="${rawUrl}"`;
     }
   );
 
-  // Step 3: Replace 'components' or 'component' in import paths
-  content = content.replace(
-    /import\s+([^\s]+)\s+from\s+['"](?:\.\/|\.\.\/)*(.*?)(components|component)\/([^'"]+)['"]/g,
-    (match, varName, basePath, compWord, remainingPath) => {
-      const componentName = remainingPath.split('/').pop();
-      return `import ${varName} from "${process.env.REACT_APP_API_URL}/api/component/${componentName}"`;
-    }
-  );
+  // Add necessary imports and setup
+  return `
+import React from 'react';
+import ReactDOM from 'react-dom';
+import '../components/blockNavigation';
 
-  // Step 4: Replace object-style image paths like: image: "/assets/img.png"
-  content = content.replace(
-    /image\s*:\s*["'](\/?[a-zA-Z0-9\-_/\.]+)["']/g,
-    (match, relPath) => {
-      const cleanPath = adjustPath(relPath);
-      const rawUrl = `https://raw.githubusercontent.com/${username}${repoPath}/${branch}/${selectedDir}/${cleanPath}`;
-      return `image: "${rawUrl}"`;
-    }
-  );
+${content}
 
-  return content;
+// Render the component
+const root = document.createElement('div');
+document.body.appendChild(root);
+ReactDOM.render(React.createElement(PageOne), root);
+`;
 };
 
 // POST route to write file content
@@ -70,8 +55,9 @@ router.post('/write-file-content', async (req, res) => {
       return res.status(400).json({ error: 'No content provided' });
     }
 
-    // Store the content in memory
-    currentFileContent = content;
+    // Transform and store the content
+    const transformedContent = transformContent(content, username, repoUrl, branch, selectedFile);
+    currentFileContent = transformedContent;
     console.log('Updated file content in memory');
     
     res.json({ message: 'File content updated successfully' });
