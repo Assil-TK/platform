@@ -56,17 +56,22 @@ const EditFile = () => {
       const branch = 'main';
       const username = user?.username || user?.login;
 
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/write-file-content`, {
-        content,
-        repoUrl,
-        branch,
-        selectedFile,
-        username,
+      // Update the preview content
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/update-preview`, {
+        content: `// Auto-generated preview file\nimport '../components/blockNavigation';\n${content}`
       });
     } catch (error) {
-      console.error('Failed to update filecontent.js:', error.response?.data || error.message);
+      console.error('Failed to update preview:', error.response?.data || error.message);
     }
   };
+
+  useEffect(() => {
+    // Reset preview content on mount
+    console.log('Resetting file content preview on mount...');
+    fetch(`${process.env.REACT_APP_API_URL}/api/reset-preview`, {
+      method: 'POST',
+    });
+  }, []);
 
   const sendAllComponentsToBackend = async () => {
     try {

@@ -147,8 +147,6 @@ app.get('/me', (req, res) => {
   }
 });
 
-
-
 // List GitHub repos
 app.get('/api/repos', async (req, res) => {
   if (!req.isAuthenticated()) {
@@ -281,6 +279,30 @@ app.post('/api/update-file', async (req, res) => {
   }
 });
 
+// Add in-memory storage for file content
+let currentFileContent = '// Auto-cleared preview file';
+
+// Add route to get file content
+app.get('/filecontent', (req, res) => {
+  res.set('Content-Type', 'application/javascript');
+  res.send(currentFileContent);
+});
+
+// Add route to update file content
+app.post('/api/update-preview', (req, res) => {
+  const { content } = req.body;
+  if (!content) {
+    return res.status(400).json({ error: 'No content provided' });
+  }
+  currentFileContent = content;
+  res.json({ message: 'Preview content updated' });
+});
+
+// Add route to reset file content
+app.post('/api/reset-preview', (req, res) => {
+  currentFileContent = '// Auto-cleared preview file';
+  res.json({ message: 'Preview content reset' });
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
