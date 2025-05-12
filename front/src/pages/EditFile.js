@@ -34,7 +34,7 @@ const EditFile = () => {
         setContent(content);
         setSha(sha);
         if (user) {
-          updateFileContentInPlatform(content, selectedFile);
+          await updateFileContentInPlatform(content, selectedFile);
         }
       } catch (err) {
         console.error('Error loading file:', err);
@@ -73,20 +73,6 @@ const EditFile = () => {
     }
   };
 
-  useEffect(() => {
-    // Reset preview content on mount
-    console.log('Resetting file content preview on mount...');
-    fetch(`${process.env.REACT_APP_API_URL}/api/reset-filecontent`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }).catch(error => {
-      console.error('Error resetting preview:', error);
-    });
-  }, []);
-
   const sendAllComponentsToBackend = async () => {
     try {
       const username = user?.username || user?.login;
@@ -94,7 +80,12 @@ const EditFile = () => {
   
       const fetchComponentFiles = async (path = '') => {
         const url = `https://api.github.com/repos/${repoPath}/contents/${path}`;
-        const response = await axios.get(url);
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: `token ${user.accessToken}`,
+            Accept: 'application/vnd.github+json'
+          }
+        });
         let filesToSend = [];
   
         for (const item of response.data) {
@@ -103,7 +94,12 @@ const EditFile = () => {
   
             // If folder name is 'component' or 'components'
             if (dirName === 'component' || dirName === 'components') {
-              const compFolderFiles = await axios.get(item.url);
+              const compFolderFiles = await axios.get(item.url, {
+                headers: {
+                  Authorization: `token ${user.accessToken}`,
+                  Accept: 'application/vnd.github+json'
+                }
+              });
               for (const file of compFolderFiles.data) {
                 if (file.type === 'file' && /\.(js|jsx|ts|tsx)$/.test(file.name)) {
                   const fileContentResponse = await axios.get(file.download_url);
@@ -124,7 +120,17 @@ const EditFile = () => {
       const files = await fetchComponentFiles();
       console.log('Sending these component files to the backend:', files);
   
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/save-imported-components`, { files });
+      if (files.length > 0) {
+        await axios.post(`${process.env.REACT_APP_API_URL}/api/save-imported-components`, 
+          { files },
+          {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
     } catch (err) {
       console.error('Failed to send components to backend:', err.response?.data || err.message);
     }
