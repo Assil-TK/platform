@@ -60,30 +60,39 @@ const replaceImageUsages = (content, username, repoUrl, branch, selectedFile) =>
   return content;
 };
 
-// Route: POST /api/write-file-content
-router.post('/write-file-content', (req, res) => {
-  const { content, username, repoUrl, branch, selectedFile } = req.body;
+// POST route to write file content
+router.post('/write-file-content', async (req, res) => {
+  try {
+    const { content, repoUrl, branch, selectedFile, username } = req.body;
+    console.log('Received content update request:', { repoUrl, branch, selectedFile, username });
+    
+    if (!content) {
+      return res.status(400).json({ error: 'No content provided' });
+    }
 
-  if (!content || !username || !repoUrl || !branch || !selectedFile) {
-    return res.status(400).json({ message: 'Missing required fields: content, username, repoUrl, branch, or selectedFile.' });
+    // Store the content in memory
+    currentFileContent = content;
+    console.log('Updated file content in memory');
+    
+    res.json({ message: 'File content updated successfully' });
+  } catch (error) {
+    console.error('Error updating file content:', error);
+    res.status(500).json({ error: 'Failed to update file content' });
   }
-
-  const transformedContent = replaceImageUsages(content, username, repoUrl, branch, selectedFile);
-  currentFileContent = `// Auto-generated preview file\nimport '../components/blockNavigation';\n${transformedContent}`;
-
-  res.status(200).json({ message: 'File content updated successfully!' });
 });
 
-// Route: GET /filecontent
+// GET route to retrieve file content
 router.get('/filecontent', (req, res) => {
+  console.log('Retrieving file content');
   res.set('Content-Type', 'application/javascript');
   res.send(currentFileContent);
 });
 
-// Route: POST /reset-filecontent
+// POST route to reset file content
 router.post('/reset-filecontent', (req, res) => {
+  console.log('Resetting file content');
   currentFileContent = '// Auto-cleared preview file';
-  res.status(200).json({ message: 'File content reset successfully!' });
+  res.json({ message: 'File content reset successfully' });
 });
 
 module.exports = router;

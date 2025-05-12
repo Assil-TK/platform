@@ -28,7 +28,7 @@ app.use(express.json());
 
 // Mount routes
 app.use('/api', saveContentRoute);  // This will handle /api/write-file-content, /api/filecontent, and /api/reset-filecontent
-app.use(createComponentsRouter);
+app.use('/api', createComponentsRouter);  // Mount components router under /api prefix
 
 // Session middleware
 app.use(session({
@@ -279,31 +279,6 @@ app.post('/api/update-file', async (req, res) => {
       details: err.response?.data || err.message || err,
     });
   }
-});
-
-// Add in-memory storage for file content
-let currentFileContent = '// Auto-cleared preview file';
-
-// Add route to get file content
-app.get('/filecontent', (req, res) => {
-  res.set('Content-Type', 'application/javascript');
-  res.send(currentFileContent);
-});
-
-// Add route to update file content
-app.post('/api/update-preview', (req, res) => {
-  const { content } = req.body;
-  if (!content) {
-    return res.status(400).json({ error: 'No content provided' });
-  }
-  currentFileContent = content;
-  res.json({ message: 'Preview content updated' });
-});
-
-// Add route to reset file content
-app.post('/api/reset-preview', (req, res) => {
-  currentFileContent = '// Auto-cleared preview file';
-  res.json({ message: 'Preview content reset' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

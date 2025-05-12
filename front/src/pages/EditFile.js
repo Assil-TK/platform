@@ -56,7 +56,10 @@ const EditFile = () => {
       const branch = 'main';
       const username = user?.username || user?.login;
 
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/write-file-content`, {
+      console.log('Updating file content:', { repoUrl, branch, selectedFile, username });
+
+      // First update the preview content
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/write-file-content`, {
         content,
         repoUrl,
         branch,
@@ -68,6 +71,11 @@ const EditFile = () => {
           'Content-Type': 'application/json'
         }
       });
+
+      console.log('File content update response:', response.data);
+
+      // Then send components to backend
+      await sendAllComponentsToBackend();
     } catch (error) {
       console.error('Failed to update preview:', error.response?.data || error.message);
     }
@@ -136,7 +144,24 @@ const EditFile = () => {
     }
   };
   
-  
+  // Add a function to check the current file content
+  const checkFileContent = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/filecontent`, {
+        credentials: 'include'
+      });
+      console.log('Current file content:', response.data);
+    } catch (error) {
+      console.error('Failed to check file content:', error.response?.data || error.message);
+    }
+  };
+
+  // Add useEffect to check file content on mount and when content changes
+  useEffect(() => {
+    if (content) {
+      checkFileContent();
+    }
+  }, [content]);
 
   const handleSave = async () => {
     try {
